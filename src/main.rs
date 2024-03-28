@@ -8,6 +8,7 @@ use std::fmt::Debug;
 use std::io::{BufRead, BufReader, Write};
 use std::io::Error as Er;
 use std::io::ErrorKind as Kind;
+use std::process::exit;
 use local_ip_address::local_ip;
 
 fn handle_conn(mut stream: TcpStream) -> Result<(), Er> {
@@ -20,7 +21,7 @@ fn handle_conn(mut stream: TcpStream) -> Result<(), Er> {
 
     if request_line == "GET / HTTP/1.1" {
         let status = "HTTP/1.1 200 OK";
-        let files = fs::read_dir("htmls").expect("Cant read >:(");
+        let files = fs::read_dir("htmls").unwrap_or_else(|msg| {eprintln!("Cant read >:( {}", msg); exit(1);});
             for file in files {
                 if let Ok(file) = file {
                     let path = file.file_name();
@@ -66,14 +67,20 @@ fn main() {
         Ok(ref bind) => println!("Listening on clients"),
         Err(e) => {
             println!("Port is already in use");
-            std::process::exit(1);
+            exit(1);
         },
     }
 
-    let bind = bind.unwrap();
+    let bind = bind.unwrap_or_else(|msg| {
+        eprintln!("Can't bind listener");
+        exit(1);
+    });
 
         for stream in bind.incoming().into_iter() {
-            let stream: TcpStream = stream.unwrap();
+            let stream: TcpStream = stream.unwrap_or_else(|msg| {
+                eprintln!("Problem with stream {}", msg);
+                exit(1);
+            });
             handle_conn(stream);
         }
 }
