@@ -2,7 +2,7 @@
 
 use std::net::{TcpListener, TcpStream};
 use std::{env, fs};
-use std::env::ArgsOs;
+use std::env::Args;
 use std::fmt::Error;
 use std::io::{BufRead, BufReader, Write};
 use std::io::Error as Er;
@@ -44,15 +44,25 @@ fn handle_conn(mut stream: TcpStream) -> Result<(), Er> {
     Ok(())
 }
 
-fn main() {
+fn main() -> Result<(), Error> {
 
-    let args: ArgsOs = env::args_os();
-    let bind:TcpListener = TcpListener::bind("127.0.0.1:21039").unwrap();
+    let mut args: Vec<String> = env::args().collect();
 
-    println!("Listening on clients");
-
-    for stream in bind.incoming() {
-        let stream: TcpStream = stream.unwrap();
-        handle_conn(stream);
+    if args.len() == 0 {
+        Err::<(), &str>("Port is not valid");
     }
+
+    let mut address = String::from("127.0.0.1:");
+    address.push_str(&args[1]);
+
+
+        let bind: TcpListener = TcpListener::bind(address).unwrap();
+
+        println!("Listening on clients");
+
+        for stream in bind.incoming() {
+            let stream: TcpStream = stream.unwrap();
+            handle_conn(stream);
+        }
+    Ok(())
 }

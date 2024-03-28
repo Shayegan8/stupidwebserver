@@ -1,3 +1,3 @@
 cargo build
-mkdir target/htmls
-echo NOT FOUND > target/htmls/404.html
+mkdir target/debug/htmls
+echo NOT FOUND > target/debug/htmls/404.html
