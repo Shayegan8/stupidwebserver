@@ -1,19 +1,21 @@
 #![allow(unused)]
 
 use std::net::{TcpListener, TcpStream};
-use std::{env, fs};
+use std::{env, fmt, fs};
 use std::env::Args;
-use std::fmt::Error;
+use std::error::Error;
+use std::fmt::Debug;
 use std::io::{BufRead, BufReader, Write};
 use std::io::Error as Er;
 use std::io::ErrorKind as Kind;
+use local_ip_address::local_ip;
 
 fn handle_conn(mut stream: TcpStream) -> Result<(), Er> {
 
     let buf_reader = BufReader::new(&mut stream);
     let request_line:String = match buf_reader.lines().next() {
         Some(Ok((line))) => line,
-        _ => return Err(Er::new(Kind::InvalidData, "")),
+        _ => return Err(Er::new(Kind::InvalidData, "Cant read from data")),
     };
 
     if request_line == "GET / HTTP/1.1" {
@@ -44,25 +46,34 @@ fn handle_conn(mut stream: TcpStream) -> Result<(), Er> {
     Ok(())
 }
 
-fn main() -> Result<(), Error> {
+fn main() {
 
     let mut args: Vec<String> = env::args().collect();
 
-    if args.len() == 0 {
-        Err::<(), &str>("Port is not valid");
+
+    if env::args().count() == 1 {
+        eprintln!("Port is not valid");
+        std::process::exit(1);
     }
 
-    let mut address = String::from("127.0.0.1:");
-    address.push_str(&args[1]);
+    let mut address = String::new();
+    address.push_str(&format!("{address}:", address = local_ip().unwrap().to_string()));
+    address.push_str(&*args[1]);
 
+    let bind: Result< TcpListener, Er> = TcpListener::bind(address);
 
-        let bind: TcpListener = TcpListener::bind(address).unwrap();
+    match bind {
+        Ok(ref bind) => println!("Listening on clients"),
+        Err(e) => {
+            println!("Port is already in use");
+            std::process::exit(1);
+        },
+    }
 
-        println!("Listening on clients");
+    let bind = bind.unwrap();
 
-        for stream in bind.incoming() {
+        for stream in bind.incoming().into_iter() {
             let stream: TcpStream = stream.unwrap();
             handle_conn(stream);
         }
-    Ok(())
 }
