@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 colored = "2.1.0"
+lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 local-ip-address = "0.6.1"
 
 [profile.dev]
