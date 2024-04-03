@@ -156,7 +156,6 @@ fn main() {
         }
     });
 
-    println!("{}", &property);
     let bind: Result<TcpListener, Er> = TcpListener::bind(&property);
 
     match bind {
