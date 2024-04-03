@@ -1,16 +1,14 @@
+use colored::Colorize;
 use local_ip_address::local_ip;
 use std::ffi::OsString;
-use std::io::Error as Er;
+use std::io::{stdin, Error as Er};
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::process::exit;
-use std::{env, fs};
+use std::{env, fs, thread};
 
-fn handle_conn(
-    mut stream: TcpStream,
-    vec: &Vec<OsString>,
-) -> Result<(), std::io::Error> {
+fn handle_conn(mut stream: TcpStream, vec: &Vec<OsString>) -> Result<(), std::io::Error> {
     let mut buf_reader = BufReader::new(&mut stream);
     let mut request_line = String::new();
     buf_reader.read_line(&mut request_line)?;
@@ -54,6 +52,7 @@ fn handle_conn(
     println!("REQ: {:#?}", request_line);
     Ok(())
 }
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let mut vec: Vec<OsString> = vec![];
@@ -64,7 +63,7 @@ fn main() {
     }
 
     if env::args().count() == 1 {
-        eprintln!("Port is not valid");
+        eprintln!("{}", "Port is not valid".red());
         println!("{}", local_ip().unwrap().to_string());
         std::process::exit(1);
     }
@@ -76,12 +75,46 @@ fn main() {
     ));
     address.push_str(&*args[1]);
 
+    println!(
+        "{}{}\n{}{}",
+        "Welcome to the ".green(),
+        "Stupidwebserver".yellow(),
+        "A webserver will be binded in ".purple(),
+        address.red()
+    );
+    println!(
+        "{} {} {}",
+        "do".green(),
+        "/help".red(),
+        " to get commands".green()
+    );
+
+    thread::spawn(|| loop {
+        print!("> ");
+        std::io::stdout().flush().unwrap();
+        let mut input = String::new();
+        stdin().read_line(&mut input).unwrap();
+
+        let tstrin = input.trim();
+
+        if tstrin.eq("help") {
+            println!("{}{}\n{}{}", "help".yellow(), " - this command".green(), "shutdown".yellow(), " - it shutdowns webserver".green());
+        } else if tstrin.eq("shutdown") {
+            println!("{}", "Bye!".green());
+            exit(0);
+        }
+    });
+
     let bind: Result<TcpListener, Er> = TcpListener::bind(&address);
 
     match bind {
-        Ok(ref _bind) => println!("Listening on clients"),
+        Ok(ref _bind) => println!(
+            "{}{}",
+            "BOUNDED!".yellow(),
+            " Listening on clients...".green()
+        ),
         Err(_e) => {
-            println!("Port is already in use or not exist");
+            println!("{}", "port is already inuse or not exist".red());
             exit(1);
         }
     }
