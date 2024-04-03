@@ -41,7 +41,6 @@ fn handle_conn(mut stream: TcpStream, vec: &Vec<OsString>) -> Result<(), std::io
         }
     }
     if is_writted == false {
-        println!("writing 404");
         let status = "HTTP/1.1 404 NOT FOUND";
         let contents = fs::read_to_string("htmls/404.html")?;
         let length = contents.len();
@@ -111,7 +110,7 @@ fn main() {
         "Welcome to the ".bright_green(),
         "Stupidwebserver".bright_yellow(),
         "A webserver will be binded in ".bright_green(),
-        address.on_red()
+        property.on_red()
     );
     println!(
         "{} {} {}",

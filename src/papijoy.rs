@@ -45,9 +45,10 @@ pub mod papijoy {
         let lines = binding.lines();
 
         for line in lines {
-            if line.contains(key) {
-                let splited: Vec<&str> = line.split(&*SPLITOR).collect();
-                if splited.len() <= 2 {
+            let splited: Vec<&str> = line.split(&*SPLITOR).collect();
+            println!("s{}", splited.len());
+            if splited[0].eq(key) {
+                if splited.len() == 2 {
                     return splited[1].to_string();
                 } else {
                     return value.to_string();
