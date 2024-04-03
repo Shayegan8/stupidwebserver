@@ -1,3 +1,7 @@
+mod papijoy;
+
+use papijoy::papijoy as papi;
+
 use colored::Colorize;
 use local_ip_address::local_ip;
 use std::ffi::OsString;
@@ -50,7 +54,8 @@ fn handle_conn(mut stream: TcpStream, vec: &Vec<OsString>) -> Result<(), std::io
         stream.write_all(response.as_bytes())?;
     }
 
-    let file = OpenOptions::new().append(true)
+    let file = OpenOptions::new()
+        .append(true)
         .write(true)
         .create(true)
         .open("logs/latest.log")
@@ -83,18 +88,23 @@ fn main() {
         vec.push(mrpath);
     }
 
-    if env::args().count() == 1 {
-        eprintln!("{}", "Port is not valid".on_red());
-        println!("{}", local_ip().unwrap().to_string());
-        std::process::exit(1);
-    }
-
     let mut address = String::new();
     address.push_str(&format!(
         "{address}:",
         address = local_ip().unwrap().to_string()
     ));
-    address.push_str(&*args[1]);
+
+    if env::args().count() == 1 {
+        println!("{}", "Port is not valid we use property".on_red());
+        address.push_str(&papi::get_property(
+            "port",
+            &String::from("25565"),
+            "config.dcnf",
+        ));
+    } else if env::args().count() == 2 {
+        address.push_str(&*args[1]);
+    }
+    let property = papi::get_property("addressbind", &address, "config.dcnf");
 
     println!(
         "{}{}\n{}{}",
@@ -133,11 +143,9 @@ fn main() {
             exit(0);
         } else if tstrin.eq("showlog") {
             println!("{}\n", "logs/latest.log".on_purple());
-            fs::read_to_string("logs/latest.log")
-                .iter()
-                .for_each(|x| {
-                    println!("{}", x.green());
-                });
+            fs::read_to_string("logs/latest.log").iter().for_each(|x| {
+                println!("{}", x.green());
+            });
         } else {
             println!(
                 "{}{}{}",
@@ -148,7 +156,8 @@ fn main() {
         }
     });
 
-    let bind: Result<TcpListener, Er> = TcpListener::bind(&address);
+    println!("{}", &property);
+    let bind: Result<TcpListener, Er> = TcpListener::bind(&property);
 
     match bind {
         Ok(ref _bind) => println!(

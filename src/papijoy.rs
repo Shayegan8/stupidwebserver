@@ -6,6 +6,7 @@ pub mod papijoy {
         thread,
     };
 
+    use colored::Colorize;
     use lazy_static::lazy_static;
 
     lazy_static! {
@@ -19,10 +20,10 @@ pub mod papijoy {
     pub fn set_property(key: &str, value: &str, path_name: &str) {
         if !PathBuf::from("config.dcnf").exists() {
             let file = OpenOptions::new()
-            .append(true)
-            .write(true)
-            .open(path_name)
-            .unwrap();
+                .append(true)
+                .write(true)
+                .open(path_name)
+                .unwrap();
             let mut file = LineWriter::new(file);
             let line_to = format!("{}{}{}\n", key, &*SPLITOR, value);
             let proc = thread::spawn(move || {
@@ -32,19 +33,27 @@ pub mod papijoy {
         }
     }
 
-    pub fn get_property(key: &str, value: &str, path_name: &str) -> String {
-        let binding = fs::read_to_string(path_name).unwrap();
-        let lines = binding.lines();
-        let mut retval = String::new();
-        lines.into_iter().filter(|x| x.contains(key)).for_each(|x| {
-            let splsize = x.split(&*SPLITOR).count();
-            let splited: Vec<&str> = x.split(&*SPLITOR).collect();
-            if splsize < 2 {
-                retval = (&splited[1]).to_string();
-            } else {
-                retval = value.to_string();
-            }
+    pub fn get_property(key: &str, value: &String, path_name: &str) -> String {
+        if !PathBuf::from(path_name).exists() {
+            return value.to_string();
+        }
+
+        let binding = fs::read_to_string(path_name).unwrap_or_else(|_m| {
+            panic!("{}", "wtf".on_red());
         });
-        return retval;
+
+        let lines = binding.lines();
+
+        for line in lines {
+            if line.contains(key) {
+                let splited: Vec<&str> = line.split(&*SPLITOR).collect();
+                if splited.len() <= 2 {
+                    return splited[1].to_string();
+                } else {
+                    return value.to_string();
+                }
+            }
+        }
+        return value.to_string();
     }
 }
