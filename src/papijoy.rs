@@ -46,7 +46,6 @@ pub mod papijoy {
 
         for line in lines {
             let splited: Vec<&str> = line.split(&*SPLITOR).collect();
-            println!("s{}", splited.len());
             if splited[0].eq(key) {
                 if splited.len() == 2 {
                     return splited[1].to_string();
