@@ -119,15 +119,24 @@ fn main() {
 
         if tstrin.eq("help") {
             println!(
-                "{}{}\n{}{}",
+                "{}{}\n{}{}\n{}{}",
                 "help".yellow(),
                 " - this command".green(),
                 "shutdown".yellow(),
-                " - it shutdowns webserver".green()
+                " - it shutdowns webserver".green(),
+                "showlog".yellow(),
+                " - it shows logs/latest.log lines".green()
             );
         } else if tstrin.eq("shutdown") {
             println!("{}", "Bye!".green());
             exit(0);
+        } else if tstrin.eq("showlog") {
+            println!("{}\n", "logs/latest.log".on_purple());
+            fs::read_to_string("logs/latest.log")
+                .iter()
+                .for_each(|x| {
+                    println!("{}", x.green());
+                });
         } else {
             println!(
                 "{}{}{}",
