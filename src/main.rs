@@ -61,6 +61,7 @@ fn handle_conn(mut stream: TcpStream, vec: &Vec<OsString>) -> Result<(), std::io
     file.write(str.as_bytes()).unwrap();
     file.flush().unwrap();
     println!("REQ: {:#?}", request_line);
+    print!("> ");
     Ok(())
 }
 
