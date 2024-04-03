@@ -57,13 +57,18 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let mut vec: Vec<OsString> = vec![];
     let path = PathBuf::from("htmls");
-    for string in path.read_dir().unwrap() {
+    for string in path.read_dir().unwrap_or_else(|_m| {
+        panic!(
+            "{}",
+            "Please make a htmls directory and add 404.html in it".on_red()
+        )
+    }) {
         let mrpath = string.unwrap().file_name();
         vec.push(mrpath);
     }
 
     if env::args().count() == 1 {
-        eprintln!("{}", "Port is not valid".red());
+        eprintln!("{}", "Port is not valid".on_red());
         println!("{}", local_ip().unwrap().to_string());
         std::process::exit(1);
     }
@@ -77,16 +82,16 @@ fn main() {
 
     println!(
         "{}{}\n{}{}",
-        "Welcome to the ".green(),
-        "Stupidwebserver".yellow(),
-        "A webserver will be binded in ".purple(),
-        address.red()
+        "Welcome to the ".bright_green(),
+        "Stupidwebserver".bright_yellow(),
+        "A webserver will be binded in ".bright_green(),
+        address.on_red()
     );
     println!(
         "{} {} {}",
-        "do".green(),
-        "/help".red(),
-        " to get commands".green()
+        "do".bright_green(),
+        "help".on_red(),
+        " to get commands".bright_green()
     );
 
     thread::spawn(|| loop {
@@ -98,10 +103,23 @@ fn main() {
         let tstrin = input.trim();
 
         if tstrin.eq("help") {
-            println!("{}{}\n{}{}", "help".yellow(), " - this command".green(), "shutdown".yellow(), " - it shutdowns webserver".green());
+            println!(
+                "{}{}\n{}{}",
+                "help".yellow(),
+                " - this command".green(),
+                "shutdown".yellow(),
+                " - it shutdowns webserver".green()
+            );
         } else if tstrin.eq("shutdown") {
             println!("{}", "Bye!".green());
             exit(0);
+        } else {
+            println!(
+                "{}{}{}",
+                "Command not found! do ".green(),
+                "help ".yellow(),
+                "to get commands".green()
+            )
         }
     });
 
@@ -110,11 +128,11 @@ fn main() {
     match bind {
         Ok(ref _bind) => println!(
             "{}{}",
-            "BOUNDED!".yellow(),
-            " Listening on clients...".green()
+            "BOUNDED!".bright_yellow(),
+            " Listening on clients...".bright_green()
         ),
         Err(_e) => {
-            println!("{}", "port is already inuse or not exist".red());
+            println!("{}", "port is already inuse or not exist".on_red());
             exit(1);
         }
     }
