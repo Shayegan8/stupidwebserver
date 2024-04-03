@@ -50,7 +50,7 @@ fn handle_conn(mut stream: TcpStream, vec: &Vec<OsString>) -> Result<(), std::io
         stream.write_all(response.as_bytes())?;
     }
 
-    let file = OpenOptions::new()
+    let file = OpenOptions::new().append(true)
         .write(true)
         .create(true)
         .open("logs/latest.log")
@@ -58,7 +58,7 @@ fn handle_conn(mut stream: TcpStream, vec: &Vec<OsString>) -> Result<(), std::io
 
     let mut file = LineWriter::new(file);
     let str = format!("{}\n", stream.peer_addr().unwrap().to_string());
-    file.write_all(str.as_bytes()).unwrap();
+    file.write(str.as_bytes()).unwrap();
     file.flush().unwrap();
     println!("REQ: {:#?}", request_line);
     Ok(())
