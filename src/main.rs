@@ -1,7 +1,8 @@
 use colored::Colorize;
 use local_ip_address::local_ip;
 use std::ffi::OsString;
-use std::io::{stdin, Error as Er};
+use std::fs::OpenOptions;
+use std::io::{stdin, Error as Er, LineWriter};
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
@@ -49,6 +50,16 @@ fn handle_conn(mut stream: TcpStream, vec: &Vec<OsString>) -> Result<(), std::io
         stream.write_all(response.as_bytes())?;
     }
 
+    let file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open("logs/latest.log")
+        .unwrap();
+
+    let mut file = LineWriter::new(file);
+    let str = format!("{}\n", stream.peer_addr().unwrap().to_string());
+    file.write_all(str.as_bytes()).unwrap();
+    file.flush().unwrap();
     println!("REQ: {:#?}", request_line);
     Ok(())
 }
@@ -63,7 +74,11 @@ fn main() {
             "Please make a htmls directory and add 404.html in it".on_red()
         )
     }) {
-        let mrpath = string.unwrap().file_name();
+        let mrpath = string
+            .unwrap_or_else(|_m| {
+                panic!("nothing >:(");
+            })
+            .file_name();
         vec.push(mrpath);
     }
 
