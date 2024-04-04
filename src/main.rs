@@ -21,11 +21,12 @@ fn handle_conn(mut stream: TcpStream, vec: &Vec<OsString>) -> Result<(), std::io
 
     let mut is_writted = false;
     for value in vec {
-        let astar = &<OsString as Clone>::clone(&value).into_string().unwrap();
-        if request_lines[0].contains(astar) {
-            println!("contains!");
+        let (_new_astar1, new_astar2) = request_lines[0].split_at(5);
+        let nnew_astar = new_astar2.split(" ").nth(0).unwrap();
+        let vaue = value.to_str().unwrap();
+        if nnew_astar == vaue {
             let status = "HTTP/1.1 200 OK";
-            let contents = fs::read_to_string(format!("htmls/{}", astar))?;
+            let contents = fs::read_to_string(format!("htmls/{}", vaue))?;
             let length = contents.len();
             let response = format!(
                 "{status}\r\nContent-Length: {length}\r\n\r\n{contents}",
@@ -64,8 +65,7 @@ fn handle_conn(mut stream: TcpStream, vec: &Vec<OsString>) -> Result<(), std::io
     let str = format!("{}\n", stream.peer_addr().unwrap().to_string());
     file.write(str.as_bytes()).unwrap();
     file.flush().unwrap();
-    println!("REQ: {:#?}", request_line);
-    print!("> ");
+    println!("REQ: {:#?}\n> ", request_line);
     Ok(())
 }
 
@@ -76,7 +76,7 @@ fn main() {
     for string in path.read_dir().unwrap_or_else(|_m| {
         panic!(
             "{}",
-            "Please make a htmls directory and add 404.html in it".on_red()
+            "Please make a htmls directory in here and add 404.html in it".on_red()
         )
     }) {
         let mrpath = string
