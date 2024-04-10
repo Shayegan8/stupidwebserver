@@ -13,7 +13,7 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::{env, fs, thread};
 
-fn handle_conn(mut stream: TcpStream, vec: &Vec<OsString>) -> Result<(), std::io::Error> {
+async fn handle_conn(mut stream: TcpStream, vec: &Vec<OsString>) -> Result<(), std::io::Error> {
     let mut buf_reader = BufReader::new(&mut stream);
     let mut request_line = String::new();
     buf_reader.read_line(&mut request_line)?;
@@ -65,11 +65,12 @@ fn handle_conn(mut stream: TcpStream, vec: &Vec<OsString>) -> Result<(), std::io
     let str = format!("{}\n", stream.peer_addr().unwrap().to_string());
     file.write(str.as_bytes()).unwrap();
     file.flush().unwrap();
-    println!("REQ: {:#?}\n> ", request_line);
+    println!("REQ: {:#?}", request_line);
     Ok(())
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args: Vec<String> = env::args().collect();
     let mut vec: Vec<OsString> = vec![];
     let path = PathBuf::from("htmls");
@@ -177,8 +178,8 @@ fn main() {
     for stream in bind.incoming() {
         match stream {
             Ok(stream) => {
-                handle_conn(stream, &vec).unwrap();
-            }
+                handle_conn(stream, &vec).await.unwrap();
+            },
             Err(err) => {
                 eprint!("{}", err);
             }
