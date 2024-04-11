@@ -29,7 +29,7 @@ pub mod papijoy {
             let proc = thread::spawn(move || {
                 file.write(line_to.as_bytes()).unwrap();
             });
-            proc.join().unwrap();
+            proc.join().unwrap_or_else(|x| {panic!("")});
         }
     }
 

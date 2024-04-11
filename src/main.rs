@@ -1,13 +1,11 @@
 mod papijoy;
 
-use crossterm::{cursor, style, terminal, ExecutableCommand, QueueableCommand};
+use crossterm::{cursor, terminal, QueueableCommand};
 use jemalloc_ctl::{epoch, stats};
 use papijoy::papijoy as papi;
 
 use colored::Colorize;
 use local_ip_address::local_ip;
-use std::borrow::Borrow;
-use std::cell::RefCell;
 use std::ffi::OsString;
 use std::fs::OpenOptions;
 use std::io::{stdin, Error as Er, LineWriter};
@@ -82,13 +80,25 @@ fn handle_conn(mut stream: TcpStream, vec: &Vec<OsString>) -> Result<(), std::io
 fn mem(atbol: Arc<AtomicBool>) {
     thread::spawn(move || {
         let mut stdout = std::io::stdout();
-        stdout.queue(cursor::Hide).unwrap();
         while atbol.load(Ordering::SeqCst) {
             epoch::advance().unwrap();
             stdout.queue(cursor::SavePosition).unwrap();
-            let jemallac = stats::allocated::read().unwrap().to_string().green();
+            let jemallac = stats::allocated::read()
+                .unwrap()
+                .to_string()
+                .green()
+                .parse::<i32>()
+                .unwrap()
+                / 1000;
             stdout
-                .write_all(format!("{}", jemallac).as_bytes())
+                .write_all(
+                    format!(
+                        "{}KB is Allocated {}",
+                        jemallac,
+                        "PRESS CTRL+C TO EXIT".on_yellow()
+                    )
+                    .as_bytes(),
+                )
                 .unwrap();
             stdout.queue(cursor::SetCursorStyle::BlinkingBlock).unwrap();
             stdout.queue(cursor::RestorePosition).unwrap();
@@ -99,8 +109,9 @@ fn mem(atbol: Arc<AtomicBool>) {
             stdout
                 .queue(terminal::Clear(terminal::ClearType::FromCursorDown))
                 .unwrap();
+            stdout.queue(cursor::Show).unwrap();
         }
-        stdout.queue(cursor::Show).unwrap();
+        atbol.store(true, Ordering::SeqCst);
     })
     .join()
     .unwrap();
@@ -155,7 +166,7 @@ fn main() {
         "help".on_red(),
         " to get commands".bright_green()
     );
-    
+
     let atbol = Arc::new(AtomicBool::new(true));
     let atbol_clone = atbol.clone();
 
@@ -163,44 +174,43 @@ fn main() {
         atbol_clone.store(false, Ordering::SeqCst);
     })
     .unwrap();
-    thread::spawn(move || {
-        
-        loop {
-            print!("> ");
-            std::io::stdout().flush().unwrap();
-            let mut input = String::new();
-            stdin().read_line(&mut input).unwrap();
+    thread::spawn(move || loop {
+        print!("> ");
+        std::io::stdout().flush().unwrap();
+        let mut input = String::new();
+        stdin().read_line(&mut input).unwrap();
 
-            let tstrin = input.trim();
+        let tstrin = input.trim();
 
-            if tstrin.eq("help") {
-                println!(
-                    "{}{}\n{}{}\n{}{}",
-                    "help".yellow(),
-                    " - this command".green(),
-                    "shutdown".yellow(),
-                    " - it shutdowns webserver".green(),
-                    "showlog".yellow(),
-                    " - it shows logs/latest.log lines".green()
-                );
-            } else if tstrin.eq("shutdown") {
-                println!("{}", "Bye!".green());
-                exit(0);
-            } else if tstrin.eq("showlog") {
-                println!("{}\n", "logs/latest.log".on_purple());
-                fs::read_to_string("logs/latest.log").iter().for_each(|x| {
-                    println!("{}", x.green());
-                });
-            } else if tstrin.eq("memory") {
-                mem(atbol.clone());
-            } else {
-                println!(
-                    "{}{}{}",
-                    "Command not found! do ".green(),
-                    "help ".yellow(),
-                    "to get commands".green()
-                )
-            }
+        if tstrin.eq("help") {
+            println!(
+                "{}{}\n{}{}\n{}{}\n{}{}",
+                "help".yellow(),
+                " - this command".green(),
+                "shutdown".yellow(),
+                " - it shutdowns webserver".green(),
+                "showlog".yellow(),
+                " - it shows logs/latest.log lines".green(),
+                "memory".yellow(),
+                " - it shows allocated memory at that time".green()
+            );
+        } else if tstrin.eq("shutdown") {
+            println!("{}", "Bye!".green());
+            exit(0);
+        } else if tstrin.eq("showlog") {
+            println!("{}\n", "logs/latest.log".on_purple());
+            fs::read_to_string("logs/latest.log").iter().for_each(|x| {
+                println!("{}", x.green());
+            });
+        } else if tstrin.eq("memory") {
+            mem(atbol.clone());
+        } else {
+            println!(
+                "{}{}{}",
+                "Command not found! do ".green(),
+                "help ".yellow(),
+                "to get commands".green()
+            )
         }
     });
 
