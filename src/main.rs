@@ -1,9 +1,13 @@
 mod papijoy;
 
+use crossterm::{cursor, style, terminal, ExecutableCommand, QueueableCommand};
+use jemalloc_ctl::{epoch, stats};
 use papijoy::papijoy as papi;
 
 use colored::Colorize;
 use local_ip_address::local_ip;
+use std::borrow::Borrow;
+use std::cell::RefCell;
 use std::ffi::OsString;
 use std::fs::OpenOptions;
 use std::io::{stdin, Error as Er, LineWriter};
@@ -11,9 +15,15 @@ use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::process::exit;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
 use std::{env, fs, thread};
 
-async fn handle_conn(mut stream: TcpStream, vec: &Vec<OsString>) -> Result<(), std::io::Error> {
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+
+fn handle_conn(mut stream: TcpStream, vec: &Vec<OsString>) -> Result<(), std::io::Error> {
     let mut buf_reader = BufReader::new(&mut stream);
     let mut request_line = String::new();
     buf_reader.read_line(&mut request_line)?;
@@ -65,12 +75,38 @@ async fn handle_conn(mut stream: TcpStream, vec: &Vec<OsString>) -> Result<(), s
     let str = format!("{}\n", stream.peer_addr().unwrap().to_string());
     file.write(str.as_bytes()).unwrap();
     file.flush().unwrap();
-    println!("REQ: {:#?}", request_line);
+    println!("REQ: {:#?}\n> ", request_line);
     Ok(())
 }
 
-#[tokio::main]
-async fn main() {
+fn mem(atbol: Arc<AtomicBool>) {
+    thread::spawn(move || {
+        let mut stdout = std::io::stdout();
+        stdout.queue(cursor::Hide).unwrap();
+        while atbol.load(Ordering::SeqCst) {
+            epoch::advance().unwrap();
+            stdout.queue(cursor::SavePosition).unwrap();
+            let jemallac = stats::allocated::read().unwrap().to_string().green();
+            stdout
+                .write_all(format!("{}", jemallac).as_bytes())
+                .unwrap();
+            stdout.queue(cursor::SetCursorStyle::BlinkingBlock).unwrap();
+            stdout.queue(cursor::RestorePosition).unwrap();
+            stdout.flush().unwrap();
+            thread::sleep(Duration::from_secs(1));
+
+            stdout.queue(cursor::RestorePosition).unwrap();
+            stdout
+                .queue(terminal::Clear(terminal::ClearType::FromCursorDown))
+                .unwrap();
+        }
+        stdout.queue(cursor::Show).unwrap();
+    })
+    .join()
+    .unwrap();
+}
+
+fn main() {
     let args: Vec<String> = env::args().collect();
     let mut vec: Vec<OsString> = vec![];
     let path = PathBuf::from("htmls");
@@ -119,40 +155,52 @@ async fn main() {
         "help".on_red(),
         " to get commands".bright_green()
     );
+    
+    let atbol = Arc::new(AtomicBool::new(true));
+    let atbol_clone = atbol.clone();
 
-    thread::spawn(|| loop {
-        print!("> ");
-        std::io::stdout().flush().unwrap();
-        let mut input = String::new();
-        stdin().read_line(&mut input).unwrap();
+    ctrlc::set_handler(move || {
+        atbol_clone.store(false, Ordering::SeqCst);
+    })
+    .unwrap();
+    thread::spawn(move || {
+        
+        loop {
+            print!("> ");
+            std::io::stdout().flush().unwrap();
+            let mut input = String::new();
+            stdin().read_line(&mut input).unwrap();
 
-        let tstrin = input.trim();
+            let tstrin = input.trim();
 
-        if tstrin.eq("help") {
-            println!(
-                "{}{}\n{}{}\n{}{}",
-                "help".yellow(),
-                " - this command".green(),
-                "shutdown".yellow(),
-                " - it shutdowns webserver".green(),
-                "showlog".yellow(),
-                " - it shows logs/latest.log lines".green()
-            );
-        } else if tstrin.eq("shutdown") {
-            println!("{}", "Bye!".green());
-            exit(0);
-        } else if tstrin.eq("showlog") {
-            println!("{}\n", "logs/latest.log".on_purple());
-            fs::read_to_string("logs/latest.log").iter().for_each(|x| {
-                println!("{}", x.green());
-            });
-        } else {
-            println!(
-                "{}{}{}",
-                "Command not found! do ".green(),
-                "help ".yellow(),
-                "to get commands".green()
-            )
+            if tstrin.eq("help") {
+                println!(
+                    "{}{}\n{}{}\n{}{}",
+                    "help".yellow(),
+                    " - this command".green(),
+                    "shutdown".yellow(),
+                    " - it shutdowns webserver".green(),
+                    "showlog".yellow(),
+                    " - it shows logs/latest.log lines".green()
+                );
+            } else if tstrin.eq("shutdown") {
+                println!("{}", "Bye!".green());
+                exit(0);
+            } else if tstrin.eq("showlog") {
+                println!("{}\n", "logs/latest.log".on_purple());
+                fs::read_to_string("logs/latest.log").iter().for_each(|x| {
+                    println!("{}", x.green());
+                });
+            } else if tstrin.eq("memory") {
+                mem(atbol.clone());
+            } else {
+                println!(
+                    "{}{}{}",
+                    "Command not found! do ".green(),
+                    "help ".yellow(),
+                    "to get commands".green()
+                )
+            }
         }
     });
 
@@ -178,8 +226,8 @@ async fn main() {
     for stream in bind.incoming() {
         match stream {
             Ok(stream) => {
-                handle_conn(stream, &vec).await.unwrap();
-            },
+                handle_conn(stream, &vec).unwrap();
+            }
             Err(err) => {
                 eprint!("{}", err);
             }
